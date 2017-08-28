@@ -13,4 +13,5 @@ ps ax | grep -i 'kafka.Kafka' | grep -v grep | awk '{print $1}' | xargs -I % sh 
 $KAFKA_HOME/bin/kafka-console-producer.sh --topic <TOPIC_NAME> --bootstrap-server zoo1:9092
 
 # launch consumer like this:`
-# kafka-console-consumer.sh --topic <TOPIC_NAME> --bootstrap-server zoo1:9092 --consumer.config $KAFKA_HOME/config/consumer.properties [--from-beginning]```
+# kafka-console-consumer.sh --topic <TOPIC_NAME> --bootstrap-server zoo1:9092 --consumer.config $KAFKA_HOME/config/consumer.properties [--from-beginning]
+```
