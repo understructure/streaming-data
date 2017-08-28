@@ -8,6 +8,8 @@ cd
 
 sudo yum -y update
 
+export ZK_PRIVATE_IP=a.b.c.d
+
 ###################################################################################
 # install Kafka
 ###################################################################################
@@ -42,7 +44,7 @@ chgrp ec2-user /opt/apache/kafka -R
 ####################################################
 # NOTE: CHANGE THIS NEXT TIME IT RUNS!!!
 ####################################################
-sudo sh -c "echo '172.31.81.70  zoo1' >> /etc/hosts"
+sudo sh -c "echo '$ZK_PRIVATE_IP  zoo1' >> /etc/hosts"
 
 export BROKERID=3
 export ZKNAME=zoo1
@@ -56,39 +58,29 @@ cat $KAFKA_HOME/config/server.properties | sed s/broker.id=0/broker.id=$BROKERID
 
 cat $KAFKA_HOME/config/server.properties.new | sed s/zookeeper.connect=localhost:2181/zookeeper.connect=$ZKNAME:2181/ > $KAFKA_HOME/config/server.properties.new2
 
-# Don't uncomment this line?  If so, need to put something different for listeners than for advertised.listeners I guess...
-
-# cat  $KAFKA_HOME/config/server.properties.new2 | sed s@#listeners=PLAINTEXT://:9092@listeners=PLAINTEXT://:9092@ > $KAFKA_HOME/config/server.properties.new3
-
 # needs to be like this: advertised.listeners=PLAINTEXT://ec2-34-205-23-39.compute-1.amazonaws.com:9092
-cat  $KAFKA_HOME/config/server.properties.new2 | sed s@#advertised.listeners=PLAINTEXT://your.host.name:9092@advertised.listeners=PLAINTEXT://$PUBLIC_HOSTNAME:9092@ > $KAFKA_HOME/config/server.properties.new4
+cat  $KAFKA_HOME/config/server.properties.new2 | sed s@#advertised.listeners=PLAINTEXT://your.host.name:9092@advertised.listeners=PLAINTEXT://$PUBLIC_HOSTNAME:9092@ > $KAFKA_HOME/config/server.properties.new3
 
 # overwrite original server.properties file
-mv $KAFKA_HOME/config/server.properties.new4 $KAFKA_HOME/config/server.properties -f
-
-# echo "hostname=${PUBLIC_IP}" >> $KAFKA_HOME/config/server.properties
+mv $KAFKA_HOME/config/server.properties.new3 $KAFKA_HOME/config/server.properties -f
 
 chown ec2-user /opt/apache/kafka -R
 chgrp ec2-user /opt/apache/kafka -R
 
 rm /opt/apache/kafka/config/server.properties.new
 rm /opt/apache/kafka/config/server.properties.new2
-# rm /opt/apache/kafka/config/server.properties.new3
-# rm /opt/apache/kafka/config/server.properties.new4
-
 
 # change this line to include IP, use latest/meta-data #advertised.listeners=PLAINTEXT://your.host.name:9092
 
 # nohup kafka-server-start.sh $KAFKA_HOME/config/server.properties 2>&1 &
 sudo -u ec2-user $KAFKA_HOME/bin/kafka-server-start.sh $KAFKA_HOME/config/server.properties &
 
-
 # view all connections for kafka.Kafka: 
 # ps ax | grep -i 'kafka.Kafka' | grep -v grep | awk '{print $1}' | xargs -I % sh -c 'netstat -nap | grep %'
 
 # NOTE:  Don't forget to open up port 2181 on Zookeeper server(s) or this won't work!
 
-# kill Kafka:
+# Not the cleanest way to kill Kafka, but in a pinch...:
 # sudo kill $(ps ax | grep -i 'kafka\.Kafka' | grep java | grep -v grep | awk '{print $1}')
 
 # for Kafka server.properties file, need to add
@@ -102,34 +94,3 @@ sudo -u ec2-user $KAFKA_HOME/bin/kafka-server-start.sh $KAFKA_HOME/config/server
 
 # launch consumer like this:
 # kafka-console-consumer.sh --topic <TOPIC_NAME> --bootstrap-server 10.x.y.z:9092 --consumer.config $KAFKA_HOME/config/consumer.properties [--from-beginning]
-
-# make sure zookeeper.connect is set in consumer.properites
-
-# update /etc/hosts with zookeeper server IP
-
-
-
-# substitute the ubiquitous broker.id=0 for another number (variable passed in through CloudFormation?)
-
-# backup original file
-# cp $KAFKA_HOME/config/server.properties $KAFKA_HOME/config/server.properties.old
-
-# BROKERID and Zookeeper stuff should be passed in through CF
-
-export BROKERID=1
-
-cat $KAFKA_HOME/config/server.properties | sed s/broker.id=0/broker.id=$BROKERID/ > $KAFKA_HOME/config/server.properties.new
-
-cat $KAFKA_HOME/config/server.properties.new | sed s/zookeeper.connect=localhost:2181/zookeeper.connect=$ZKNAME:2181/ > $KAFKA_HOME/config/server.properties.new2
-
-cat  $KAFKA_HOME/config/server.properties.new2 | sed s@#listeners=PLAINTEXT://:9092@listeners=PLAINTEXT://:9092@ > $KAFKA_HOME/config/server.properties.new3
-
-# # NOTE: We’ll probably want to change log.dirs as well, possibly to EBS volume? /ebs/kafka-logs ?
-
-# # overwrite original server.properties file
-mv $KAFKA_HOME/config/server.properties.new3 $KAFKA_HOME/config/server.properties -f
-
-nohup $KAFKA_HOME/bin/kafka-server-start.sh $KAFKA_HOME/config/server.properties > kafka.out 2>&1 &
-# # not sure if this is a fantastic idea or not
-# alias kafka='kafka-server-start.sh'
-# kafka $KAFKA_HOME/config/server.properties
